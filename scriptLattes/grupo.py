@@ -109,7 +109,7 @@ class Grupo:
 
 
         # atualizamos a lista de parametros
-        for linha in fileinput.input(self.arquivoConfiguracao):
+        for linha in fileinput.input(self.arquivoConfiguracao, encoding='utf-8'):
             linha = linha.replace("\r", "")
             linha = linha.replace("\n", "")
 
@@ -141,7 +141,7 @@ class Grupo:
         if self.obterParametro('global-identificar_producoes_por_termos'):
             # carregamos a lista de termos
             entrada = buscarArquivo(self.obterParametro('global-arquivo_de_termos_de_busca'))
-            for linha in fileinput.input(entrada):
+            for linha in fileinput.input(entrada, encoding='utf-8'):
                 linha = linha.replace("\r", "")
                 linha = linha.replace("\n", "")
 
@@ -160,7 +160,7 @@ class Grupo:
         entrada = buscarArquivo(self.obterParametro('global-arquivo_de_entrada'))
 
         idSequencial = 0
-        for linha in fileinput.input(entrada):
+        for linha in fileinput.input(entrada, encoding='utf-8'):
             linha = linha.replace("\r", "")
             linha = linha.replace("\n", "")
 
@@ -857,7 +857,7 @@ class Grupo:
 
     def salvarMatrizXML(self, matriz, nomeArquivo):
         dir = self.obterParametro('global-diretorio_de_saida')
-        arquivo = open(dir + "/" + nomeArquivo, 'w')
+        arquivo = open(dir + "/" + nomeArquivo, 'w', encoding='utf8')
 
         s = '<?xml version="1.0" encoding="UTF-8"?> \
             \n<!--  An excerpt of an egocentric social network  --> \
@@ -896,12 +896,12 @@ class Grupo:
         s += '\n</graph>\
             \n</graphml>'
 
-        arquivo.write(s.encode('utf8'))
+        arquivo.write(s)
         arquivo.close()
 
     def salvarVetorDeProducoes(self, vetor, nomeArquivo):
         dir = self.obterParametro('global-diretorio_de_saida')
-        arquivo = open(dir + "/" + nomeArquivo, 'w')
+        arquivo = open(dir + "/" + nomeArquivo, 'w', encoding='utf8')
         string = ''
         for i in range(0, len(vetor)):
             (prefixo, pAnos, pQuantidades) = vetor[i]
@@ -913,7 +913,7 @@ class Grupo:
 
     def salvarListaInternalizacaoTXT(self, listaDoiValido, nomeArquivo):
         dir = self.obterParametro('global-diretorio_de_saida')
-        arquivo = open(dir + "/" + nomeArquivo, 'w')
+        arquivo = open(dir + "/" + nomeArquivo, 'w', encoding='utf8')
         for i in range(0, len(listaDoiValido)):
             elemento = listaDoiValido[i]
             if type(elemento) == type(str()):

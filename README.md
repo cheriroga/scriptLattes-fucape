@@ -32,16 +32,44 @@ O scriptLattes atualmente permite filtrar as produções científicas usando ter
 - **Tratamento de Idiomas**: Suporte para múltiplos idiomas por pesquisador
 
 ## Pré-requisitos
-- **Python 3**: Certifique-se de ter o Python 3 instalado no seu computador. 
+- **Python 3.10+**: Certifique-se de ter o Python 3 instalado no seu computador.
   Se não tiver, você pode baixá-lo em [python.org](https://www.python.org/downloads/).
-- **Google Chrome ou Chromium**: Necessário para o funcionamento do ChromeDriver.
-- **jq**: Utilitário para processamento JSON (necessário para o Makefile):
+- **Google Chrome ou Chromium**: O ChromeDriver é baixado automaticamente pelo
+  Selenium Manager (embutido no Selenium 4), então basta ter o navegador instalado.
+- **jq** e **wget** (apenas para o Makefile, opcional — Linux/macOS):
   - Ubuntu/Debian: `sudo apt-get install jq`
   - CentOS/RHEL/Fedora: `sudo yum install jq` ou `sudo dnf install jq`
   - macOS: `brew install jq`
-- **wget**: Para download do ChromeDriver (geralmente já instalado)
 
-## Instalação Rápida (Recomendada)
+## Instalação no Windows
+
+O Makefile é específico de Linux/macOS (usa `bash`, `wget`, `jq`). No Windows,
+faça a instalação direto com o Python — sem `make` e sem baixar ChromeDriver na mão:
+
+```powershell
+git clone https://github.com/jpmenachalco/scriptLattes.git
+cd scriptLattes
+
+python -m venv venv
+venv\Scripts\python.exe -m pip install --upgrade pip
+venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# executar
+venv\Scripts\python.exe scriptLattes.py exemplo\teste-01.config
+```
+
+O Selenium Manager detecta a versão do Chrome instalado e baixa o ChromeDriver
+compatível na primeira execução (requer acesso à internet). Se preferir usar um
+driver local, coloque o `chromedriver.exe` na raiz do projeto — ele tem prioridade.
+
+Se você redirecionar a saída do programa para um arquivo (`> saida.txt`), defina
+`PYTHONUTF8=1` antes, para os nomes acentuados não quebrarem o console:
+
+```powershell
+$env:PYTHONUTF8 = "1"
+```
+
+## Instalação Rápida (Recomendada — Linux/macOS)
 
 Para uma instalação completa automatizada, use o Makefile incluído:
 
@@ -102,8 +130,12 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 5. Configure o ChromeDriver manualmente
-Baixe o ChromeDriver correspondente à versão do seu navegador em [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/). É importante que as versões sejam compatíveis.
+### 5. ChromeDriver (opcional)
+Normalmente não é necessário: o Selenium Manager baixa o driver compatível com o
+Chrome instalado. Para usar um driver próprio (ambiente sem internet, por exemplo),
+baixe-o em [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/)
+e coloque na raiz do projeto como `chromedriver` (Linux/macOS) ou `chromedriver.exe`
+(Windows) — o driver local tem prioridade sobre o Selenium Manager.
 
 ## Execução do Programa
 
@@ -116,6 +148,11 @@ make test
 ```bash
 source venv/bin/activate  # Linux/Mac
 python3 scriptLattes.py exemplo/teste-01.config
+```
+
+```powershell
+# Windows
+venv\Scripts\python.exe scriptLattes.py exemplo\teste-01.config
 ```
 
 ## Estrutura de Saída
@@ -231,9 +268,11 @@ jq '{nome: .informacoes_pessoais.nome_completo, projetos_pesquisa: (.estatistica
 ## Solução de Problemas Comuns
 
 ### Erro de incompatibilidade do ChromeDriver
-Se você receber um erro como "This version of ChromeDriver only supports Chrome version X", execute:
+Se você receber um erro como "This version of ChromeDriver only supports Chrome version X",
+é porque existe um `chromedriver` (ou `chromedriver.exe`) antigo na raiz do projeto, que tem
+prioridade. Apague-o para o Selenium Manager baixar a versão correta, ou atualize-o:
 ```bash
-make update-chromedriver
+make update-chromedriver   # Linux/macOS
 ```
 
 ### Verificar status da instalação

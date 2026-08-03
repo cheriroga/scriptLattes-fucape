@@ -36,9 +36,8 @@ URL_LATTES_ID16 = 'http://lattes.cnpq.br/{0}'
 
 
 class LattesRobot:
-    def __init__(self, driver_path, results_dir):
+    def __init__(self, results_dir):
         #logging.getLogger('selenium').setLevel(logging.WARNING)
-        self.driver_path = driver_path
         self.results_dir = results_dir
         self.driver = None
         #self.ua = UserAgent()
@@ -49,10 +48,6 @@ class LattesRobot:
         self.initialize()
 
     def initialize(self):
-        if not os.path.exists(self.driver_path):
-            #logging.error('Invalid driver path: %s' % self.driver_path)
-            exit(1)
-
         if not os.path.exists(self.results_dir):
             os.makedirs(self.results_dir)
 
@@ -73,16 +68,11 @@ class LattesRobot:
         chrome_options.add_experimental_option('useAutomationExtension', False)
         chrome_options.add_experimental_option('prefs', {'download.default_directory': self.results_dir})
  
-        so = platform.system()
-        if so == 'Windows':
-            chrome_driver_path = os.path.abspath("chromedriver.exe")
-        elif so == 'Linux':
-            chrome_driver_path = os.path.abspath("chromedriver")
-        else:
-            print('Sistema Operacional não identificado')
-            
-        service = Service(chrome_driver_path)
- 
+        # chromedriver local (se existir); senão o Selenium Manager baixa o driver certo
+        nome = 'chromedriver.exe' if platform.system() == 'Windows' else 'chromedriver'
+        local = os.path.abspath(nome)
+        service = Service(local) if os.path.exists(local) else None
+
         try:
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
         except Exception as e:
@@ -171,7 +161,7 @@ class LattesRobot:
 
 
 def __get_data(id_lattes, diretorio):
-    rob = LattesRobot(driver_path="./chromedriver", results_dir=diretorio)
+    rob = LattesRobot(results_dir=diretorio)
     print(f"Baixando CV Lattes: {id_lattes}. Este processo pode demorar alguns segundos.")
     rob.load_codes(id_lattes)
     rob.check_downloaded_cvs()
