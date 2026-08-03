@@ -47,8 +47,8 @@ O Makefile é específico de Linux/macOS (usa `bash`, `wget`, `jq`). No Windows,
 faça a instalação direto com o Python — sem `make` e sem baixar ChromeDriver na mão:
 
 ```powershell
-git clone https://github.com/jpmenachalco/scriptLattes.git
-cd scriptLattes
+git clone https://github.com/cheriroga/scriptLattes-fucape.git
+cd scriptLattes-fucape
 
 python -m venv venv
 venv\Scripts\python.exe -m pip install --upgrade pip
