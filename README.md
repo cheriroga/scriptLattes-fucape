@@ -155,6 +155,59 @@ python3 scriptLattes.py exemplo/teste-01.config
 venv\Scripts\python.exe scriptLattes.py exemplo\teste-01.config
 ```
 
+## Somente artigos em periódicos, em CSV (`artigos_csv.py`)
+
+Além do programa principal, existe um segundo ponto de entrada que faz **uma coisa só**: extrai os artigos completos publicados em periódicos e entrega em CSV, já com a classificação de cada periódico. Não gera páginas HTML, grafos nem JSON.
+
+```bash
+source venv/bin/activate                          # Linux/Mac
+python3 artigos_csv.py exemplo/teste-01.config
+```
+
+```powershell
+# Windows
+venv\Scripts\python.exe artigos_csv.py exemplo\teste-01.config
+```
+
+Usa o mesmo arquivo `.config` do programa principal — nenhum parâmetro novo. Os CVs já baixados em `cache/` são reaproveitados; só quem não estiver em cache é baixado do Lattes.
+
+### Arquivos gerados
+
+| Arquivo | Conteúdo |
+| --- | --- |
+| `<diretorio_de_saida>/artigos_periodicos.csv` | Todos os pesquisadores juntos, **uma linha por pesquisador-artigo** (artigo com dois coautores do grupo aparece duas vezes) |
+| `<diretorio_de_saida>/artigos/NN_Nome_<idLattes>.csv` | Um arquivo por pesquisador, mesmas colunas |
+| `classificacoes-periodicos.json` | Base de classificações acumulada, na raiz do repositório |
+
+Colunas: `Pesquisador, Rótulo, ID Lattes, Ano, Título, Revista, ISSN, Volume, Número, Páginas, DOI, Autores, CAPES, ABDC, ABS, JCR, SJR, SPELL, Classificado por`
+
+### Rótulo do pesquisador
+
+A coluna `Rótulo` vem da **quarta coluna do arquivo `.list`**, e serve para separar os tipos de pesquisador na planilha:
+
+```
+# id_lattes , nome , período , rótulo
+8826584877205264 , Monalessa Perini Barcellos , , professor
+9583314331960942 , Daniel Cruz Cavalieri       , , aluno doutorado
+8400407353673370 , Paulo Sergio dos Santos Jr  , , pós-doc
+```
+
+Sem a quarta coluna, o rótulo sai como `* Sem rótulo`.
+
+### Classificação dos periódicos
+
+As notas vêm do [periodicos-adm.com](https://periodicos-adm.com/): **CAPES** (classificação 2025–2028, substituta do Qualis), **ABDC**, **ABS**, **JCR**, **SJR** e **SPELL**.
+
+A busca é feita primeiro pelo **ISSN** do artigo. Quando o Lattes não traz ISSN, ou quando o ISSN não retorna nada, o script tenta pelo **nome do periódico**. Nos dois casos só aceita resultado **único** — busca ambígua deixa as colunas em branco em vez de arriscar casar a revista errada. A coluna `Classificado por` registra qual caminho foi usado (`issn`, `nome` ou vazio).
+
+Como o site cobre a área 27 (Administração, Ciências Contábeis e Turismo), periódicos de outras áreas costumam vir só com CAPES/JCR/SJR, deixando ABDC, ABS e SPELL vazios.
+
+### A base cresce conforme você usa
+
+Cada periódico consultado é gravado em `classificacoes-periodicos.json`, e **um periódico já presente na base nunca é consultado de novo** — nem quando a busca não encontrou nada. Quanto mais o script roda, menos requisições ele faz: na segunda execução sobre a mesma lista, o site não é acessado nenhuma vez.
+
+O arquivo fica na raiz do repositório (e não em `cache/`, que o git ignora) justamente para poder ser versionado e compartilhado entre quem usa o script. Para forçar a reconsulta de tudo — por exemplo quando o site publicar uma atualização, informada no rodapé dele — apague o arquivo.
+
 ## Estrutura de Saída
 
 O scriptLattes gera vários tipos de saída para análise dos dados extraídos:
