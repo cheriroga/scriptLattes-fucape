@@ -9,6 +9,7 @@
 import datetime
 import os
 import queue
+import re
 import subprocess
 import sys
 import threading
@@ -63,6 +64,14 @@ def serializarLista(linhas):
     return texto
 
 
+def pastaDoGrupo(diretorioBase, nomeDoGrupo):
+    """Pasta mãe do trabalho: <base>/<nome do grupo>. Dentro dela ficam o
+    .config, o .list e os CSVs, para cada grupo ter sua caixinha."""
+    nome = re.sub(r'[^\w\s-]', '', nomeDoGrupo.strip())
+    nome = re.sub(r'[-\s]+', '-', nome)
+    return os.path.join(os.path.abspath(diretorioBase), nome or 'artigos-em-periodicos')
+
+
 def montarConfig(nome, arquivoLista, diretorioSaida, diretorioCache, anoInicial, anoFinal):
     """Só as chaves que o artigos_csv.py usa: o resto tem default em
     Grupo.carregarParametrosPadrao, e chave desconhecida vira aviso na tela."""
@@ -105,13 +114,19 @@ class Janela:
         moldura.columnconfigure(1, weight=1)
 
         self.nome = self._campo(moldura, 0, 'Nome do grupo', 'Artigos em periódicos')
-        self.saida = self._campo(moldura, 1, 'Pasta de saída', '',
-                                 botao=('Escolher…', self.escolherSaida))
+        self.base = self._campo(moldura, 1, 'Salvar em', '',
+                                botao=('Escolher…', self.escolherBase))
         self.cache = self._campo(moldura, 2, 'Cache de CVs', os.path.join(RAIZ, 'cache'),
                                  botao=('Escolher…', self.escolherCache))
 
+        self.destino = ttk.Label(moldura, foreground='#555')
+        self.destino.grid(row=3, column=1, columnspan=2, sticky='w', padx=6)
+        self.nome.trace_add('write', self._atualizarDestino)
+        self.base.trace_add('write', self._atualizarDestino)
+        self._atualizarDestino()
+
         anos = ttk.Frame(moldura)
-        anos.grid(row=3, column=0, columnspan=3, sticky='w', pady=(6, 0))
+        anos.grid(row=4, column=0, columnspan=3, sticky='w', pady=(6, 0))
         ttk.Label(anos, text='Publicações de').pack(side='left')
         self.anoInicial = tk.StringVar(value='1900')
         self.anoFinal = tk.StringVar(value=str(datetime.datetime.now().year))
@@ -137,10 +152,10 @@ class Janela:
 
     def _montarTabela(self, moldura):
         caixa = ttk.LabelFrame(moldura, text='Pesquisadores', padding=6)
-        caixa.grid(row=4, column=0, columnspan=3, sticky='nsew', pady=(10, 0))
+        caixa.grid(row=5, column=0, columnspan=3, sticky='nsew', pady=(10, 0))
         caixa.columnconfigure(0, weight=1)
         caixa.rowconfigure(0, weight=1)
-        moldura.rowconfigure(4, weight=1)
+        moldura.rowconfigure(5, weight=1)
 
         self.tabela = ttk.Treeview(caixa, columns=COLUNAS, show='headings', height=8)
         for coluna in COLUNAS:
@@ -162,7 +177,7 @@ class Janela:
 
     def _montarAcoes(self, moldura):
         acoes = ttk.Frame(moldura)
-        acoes.grid(row=5, column=0, columnspan=3, sticky='ew', pady=(10, 0))
+        acoes.grid(row=6, column=0, columnspan=3, sticky='ew', pady=(10, 0))
         ttk.Button(acoes, text='Abrir .config…', command=self.abrirConfig).pack(side='left')
         ttk.Button(acoes, text='Abrir pasta de saída', command=self.abrirPastaDeSaida).pack(side='left', padx=6)
         self.botaoParar = ttk.Button(acoes, text='Parar', command=self.parar, state='disabled')
@@ -172,10 +187,10 @@ class Janela:
 
     def _montarLog(self, moldura):
         caixa = ttk.LabelFrame(moldura, text='Progresso', padding=6)
-        caixa.grid(row=6, column=0, columnspan=3, sticky='nsew', pady=(10, 0))
+        caixa.grid(row=7, column=0, columnspan=3, sticky='nsew', pady=(10, 0))
         caixa.columnconfigure(0, weight=1)
         caixa.rowconfigure(0, weight=1)
-        moldura.rowconfigure(6, weight=1)
+        moldura.rowconfigure(7, weight=1)
 
         self.log = tk.Text(caixa, height=10, wrap='none', state='disabled')
         self.log.grid(row=0, column=0, sticky='nsew')
@@ -252,10 +267,19 @@ class Janela:
 
     # ----- arquivos -------------------------------------------------------- #
 
-    def escolherSaida(self):
-        diretorio = filedialog.askdirectory(title='Pasta de saída')
+    def pastaDeSaida(self):
+        return pastaDoGrupo(self.base.get().strip() or '.', self.nome.get())
+
+    def _atualizarDestino(self, *_):
+        if self.base.get().strip():
+            self.destino.configure(text=f'Tudo vai para: {self.pastaDeSaida()}')
+        else:
+            self.destino.configure(text='Escolha onde salvar; a pasta do grupo é criada dentro.')
+
+    def escolherBase(self):
+        diretorio = filedialog.askdirectory(title='Onde salvar a pasta do grupo')
         if diretorio:
-            self.saida.set(diretorio)
+            self.base.set(diretorio)
 
     def escolherCache(self):
         diretorio = filedialog.askdirectory(title='Pasta de cache dos CVs')
@@ -271,10 +295,14 @@ class Janela:
         with open(caminho, encoding='utf-8') as arquivo:
             valores = lerConfig(arquivo.read())
 
-        for campo, variavel in (('nome', self.nome), ('saida', self.saida), ('cache', self.cache),
+        for campo, variavel in (('nome', self.nome), ('cache', self.cache),
                                 ('anoInicial', self.anoInicial), ('anoFinal', self.anoFinal)):
             if valores.get(campo):
                 variavel.set(valores[campo])
+
+        # o config guarda a pasta do grupo; o campo da tela é a pasta que a contém
+        if valores.get('saida'):
+            self.base.set(os.path.dirname(os.path.abspath(valores['saida'])))
 
         lista = valores.get('lista', '')
         if lista and not os.path.isabs(lista):
@@ -287,7 +315,7 @@ class Janela:
                                    f'A configuração aponta para {lista}, que não existe.')
 
     def abrirPastaDeSaida(self):
-        diretorio = self.saida.get().strip()
+        diretorio = self.pastaDeSaida()
         if not os.path.isdir(diretorio):
             messagebox.showinfo('Pasta de saída', 'A pasta de saída ainda não existe.')
             return
@@ -299,8 +327,10 @@ class Janela:
     # ----- execução -------------------------------------------------------- #
 
     def validar(self, linhas):
-        if not self.saida.get().strip():
-            return 'Escolha a pasta de saída.'
+        if not self.base.get().strip():
+            return 'Escolha onde salvar.'
+        if not self.nome.get().strip():
+            return 'Dê um nome ao grupo: é ele que nomeia a pasta.'
         if not linhas:
             return 'Adicione pelo menos um pesquisador.'
         for ano in (self.anoInicial.get(), self.anoFinal.get()):
@@ -325,7 +355,7 @@ class Janela:
                 f'falhar no download:\n\n{", ".join(suspeitos)}\n\nRodar mesmo assim?'):
             return
 
-        diretorioSaida = os.path.abspath(self.saida.get().strip())
+        diretorioSaida = self.pastaDeSaida()
         try:
             os.makedirs(diretorioSaida, exist_ok=True)
             caminhoLista = os.path.join(diretorioSaida, 'pesquisadores.list')
@@ -381,8 +411,7 @@ class Janela:
                 self.botaoParar.configure(state='disabled')
                 self._escrever(f'\n[FIM — código de saída {codigo}]\n')
                 if codigo == 0:
-                    messagebox.showinfo('Pronto', 'CSVs gerados em:\n'
-                                        + os.path.abspath(self.saida.get().strip()))
+                    messagebox.showinfo('Pronto', 'CSVs gerados em:\n' + self.pastaDeSaida())
                 else:
                     messagebox.showerror('Falhou', 'O script terminou com erro. '
                                                    'Veja o progresso para o motivo.')

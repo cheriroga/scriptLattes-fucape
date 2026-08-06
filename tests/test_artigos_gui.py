@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from artigos_gui import lerConfig, montarConfig, parsearLista, serializarLista
+from artigos_gui import lerConfig, montarConfig, parsearLista, pastaDoGrupo, serializarLista
 
 LINHAS = [
     ('8826584877205264', 'Monalessa Perini Barcellos', '', 'professor'),
@@ -50,9 +50,20 @@ def test_config_ignora_chaves_de_fora():
     assert lerConfig('relatorio-incluir_premio = sim\nglobal-nome_do_grupo = Y\n') == {'nome': 'Y'}
 
 
+def test_pasta_do_grupo():
+    assert pastaDoGrupo('/tmp/x', 'FUCAPE 2026') == '/tmp/x/FUCAPE-2026'
+    assert pastaDoGrupo('/tmp/x', 'Contábeis: 1º ciclo') == '/tmp/x/Contábeis-1º-ciclo'
+    assert pastaDoGrupo('/tmp/x', '  ') == '/tmp/x/artigos-em-periodicos'
+
+    # a tela guarda a pasta de cima e recalcula: dirname tem que desfazer o join
+    pasta = pastaDoGrupo('/tmp/x', 'Grupo Y')
+    assert pastaDoGrupo(os.path.dirname(pasta), 'Grupo Y') == pasta
+
+
 if __name__ == '__main__':
     test_ida_e_volta()
     test_parse_tolerante()
     test_config()
     test_config_ignora_chaves_de_fora()
+    test_pasta_do_grupo()
     print('ok')

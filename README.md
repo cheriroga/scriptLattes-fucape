@@ -226,11 +226,23 @@ venv\Scripts\python.exe artigos_gui.py
 
 Feita em **tkinter**, que já vem com o Python — nenhuma dependência nova. (No Fedora/RHEL, se a janela não abrir, falta o pacote do sistema: `sudo dnf install python3-tkinter`.)
 
-Na janela você preenche o nome do grupo, escolhe a **pasta de saída** e a pasta de cache dos CVs num seletor, define o intervalo de anos e monta a **lista de pesquisadores numa tabela** — duplo clique edita a célula, `+ Adicionar` cria linha, e a coluna Rótulo oferece os valores comuns (professor, aluno mestrado, aluno doutorado, pós-doc) sem impedir texto livre.
+Na janela você preenche o nome do grupo, escolhe onde salvar e a pasta de cache dos CVs num seletor, define o intervalo de anos e monta a **lista de pesquisadores numa tabela** — duplo clique edita a célula, `+ Adicionar` cria linha, e a coluna Rótulo oferece os valores comuns (professor, aluno mestrado, aluno doutorado, pós-doc) sem impedir texto livre.
 
 O botão **Editar como texto…** abre a mesma lista no formato do `.list`, para colar de uma vez a partir de uma planilha; ao confirmar, o conteúdo volta para a tabela. Comentários e espaçamento não sobrevivem a essa ida e volta.
 
-Ao clicar em **Rodar**, a GUI grava `pesquisadores.list` e `artigos.config` dentro da pasta de saída e executa o script, com o log aparecendo ao vivo na janela e um botão **Parar** para interromper. **Abrir .config…** recarrega uma configuração já usada, trazendo de volta os campos e a tabela de pesquisadores.
+Cada grupo ganha **uma pasta só sua**, criada dentro do lugar escolhido e nomeada a partir do nome do grupo, com os arquivos de configuração ao lado dos resultados:
+
+```
+<onde salvar>/
+└── FUCAPE-2026/                 ← nome do grupo
+    ├── artigos.config
+    ├── pesquisadores.list
+    ├── artigos_periodicos.csv
+    └── artigos/
+        └── 00_Nome-do-Pesquisador_<idLattes>.csv
+```
+
+Ao clicar em **Rodar**, a GUI grava os dois arquivos de configuração e executa o script, com o log aparecendo ao vivo na janela e um botão **Parar** para interromper. **Abrir .config…** recarrega uma configuração já usada, trazendo de volta os campos e a tabela de pesquisadores.
 
 ## Estrutura de Saída
 
