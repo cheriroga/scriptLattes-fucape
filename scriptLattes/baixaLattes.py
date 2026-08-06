@@ -71,12 +71,18 @@ class LattesRobot:
         # chromedriver local (se existir); senão o Selenium Manager baixa o driver certo
         nome = 'chromedriver.exe' if platform.system() == 'Windows' else 'chromedriver'
         local = os.path.abspath(nome)
-        service = Service(local) if os.path.exists(local) else None
 
-        try:
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
-        except Exception as e:
-            print(f"Erro ao inicializar o driver: {e}")
+        if os.path.exists(local):
+            try:
+                self.driver = webdriver.Chrome(service=Service(local), options=chrome_options)
+                return
+            except Exception as e:
+                # tipicamente chromedriver desatualizado em relação ao Chrome instalado
+                print(f"[AVISO] chromedriver local não serviu ({str(e).splitlines()[0]}).")
+                print("[AVISO] Tentando com o driver baixado pelo Selenium Manager...")
+
+        # sem service: o Selenium Manager resolve a versão compatível sozinho
+        self.driver = webdriver.Chrome(options=chrome_options)
 
 
     def collect_html_cvs(self, start, end):
@@ -173,7 +179,8 @@ def __get_data(id_lattes, diretorio):
     #except KeyboardInterrupt:
     #    logging.info('Execution was interrupted')
     finally:
-        rob.driver.quit()
+        if rob.driver:  # se o driver nem subiu, não mascarar o erro original
+            rob.driver.quit()
 
 
 def baixaCVLattes(id_lattes, diretorio ):

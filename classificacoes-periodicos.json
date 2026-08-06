@@ -1,4 +1,16 @@
 {
+ "issn:0034-7590": {
+  "ABDC": "C",
+  "ABS": "1",
+  "CAPES": "B",
+  "JCR": "Q4",
+  "SJR": "Q3",
+  "SPELL": "10% melhores"
+ },
+ "issn:0102-7360": {
+  "CAPES": "F",
+  "SPELL": "Entre os 40% e 70% melhores"
+ },
  "issn:0104-6500": {
   "CAPES": "F",
   "SJR": "Q4"
@@ -104,14 +116,49 @@
   "JCR": "Q2",
   "SJR": "Q1"
  },
+ "issn:1808-2386": {
+  "CAPES": "B",
+  "SJR": "Q4",
+  "SPELL": "10% melhores"
+ },
  "issn:1861-2032": {},
  "issn:1875-8533": {
   "CAPES": "MB",
   "JCR": "Q3",
   "SJR": "Q1"
  },
+ "issn:1981-8610": {
+  "CAPES": "R",
+  "SPELL": "Entre os 10% e 40% melhores"
+ },
+ "issn:1982-7199": {
+  "CAPES": "I"
+ },
+ "issn:1982-7849": {
+  "ABS": "1",
+  "CAPES": "B",
+  "SJR": "Q3",
+  "SPELL": "10% melhores"
+ },
+ "issn:1983-8611": {
+  "CAPES": "R",
+  "SPELL": "10% melhores"
+ },
  "issn:1984-2902": {
   "CAPES": "I"
+ },
+ "issn:1984-6266": {
+  "CAPES": "R",
+  "JCR": "Q4",
+  "SPELL": "Entre os 10% e 40% melhores"
+ },
+ "issn:1984-6983": {
+  "CAPES": "F",
+  "SPELL": "Entre os 40% e 70% melhores"
+ },
+ "issn:1984-8196": {
+  "CAPES": "I",
+  "SPELL": "Entre os 70% e 100% melhores"
  },
  "issn:2079-6374": {
   "CAPES": "MB",
@@ -128,6 +175,14 @@
   "JCR": "Q2",
   "SJR": "Q1"
  },
+ "issn:2175-8069": {
+  "CAPES": "R",
+  "SPELL": "Entre os 10% e 40% melhores"
+ },
+ "issn:2178-9258": {
+  "CAPES": "R",
+  "SPELL": "Entre os 10% e 40% melhores"
+ },
  "issn:2192-6670": {
   "CAPES": "B",
   "JCR": "Q3",
@@ -135,6 +190,17 @@
  },
  "issn:2195-1721": {
   "CAPES": "I"
+ },
+ "issn:2210-5395": {
+  "ABDC": "B",
+  "CAPES": "MB",
+  "JCR": "Q2",
+  "SJR": "Q1"
+ },
+ "issn:2237-4558": {
+  "CAPES": "F",
+  "JCR": "Q4",
+  "SPELL": "Entre os 70% e 100% melhores"
  },
  "issn:2237-6089": {
   "CAPES": "B",
@@ -153,6 +219,12 @@
  },
  "issn:2359-4799": {
   "CAPES": "I"
+ },
+ "issn:2444-8834": {
+  "ABDC": "A",
+  "CAPES": "MB",
+  "JCR": "Q1",
+  "SJR": "Q1"
  },
  "issn:2589-014X": {
   "CAPES": "MB",
