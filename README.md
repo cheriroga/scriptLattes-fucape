@@ -159,6 +159,8 @@ venv\Scripts\python.exe scriptLattes.py exemplo\teste-01.config
 
 Além do programa principal, existe um segundo ponto de entrada que faz **uma coisa só**: extrai os artigos completos publicados em periódicos e entrega em CSV, já com a classificação de cada periódico. Não gera páginas HTML, grafos nem JSON.
 
+> Prefere não mexer em arquivo de texto nem em terminal? Existe uma **interface gráfica** para isso — pule para [Interface gráfica](#interface-gráfica-artigos_guipy).
+
 ```bash
 source venv/bin/activate                          # Linux/Mac
 python3 artigos_csv.py exemplo/teste-01.config
@@ -207,6 +209,28 @@ Como o site cobre a área 27 (Administração, Ciências Contábeis e Turismo), 
 Cada periódico consultado é gravado em `classificacoes-periodicos.json`, e **um periódico já presente na base nunca é consultado de novo** — nem quando a busca não encontrou nada. Quanto mais o script roda, menos requisições ele faz: na segunda execução sobre a mesma lista, o site não é acessado nenhuma vez.
 
 O arquivo fica na raiz do repositório (e não em `cache/`, que o git ignora) justamente para poder ser versionado e compartilhado entre quem usa o script. Para forçar a reconsulta de tudo — por exemplo quando o site publicar uma atualização, informada no rodapé dele — apague o arquivo.
+
+## Interface gráfica (`artigos_gui.py`)
+
+Para quem não quer editar `.config` e `.list` na mão, existe uma janela que monta os dois arquivos por formulário e roda o `artigos_csv.py` mostrando o progresso.
+
+```bash
+source venv/bin/activate     # Linux/Mac
+python3 artigos_gui.py
+```
+
+```powershell
+# Windows
+venv\Scripts\python.exe artigos_gui.py
+```
+
+Feita em **tkinter**, que já vem com o Python — nenhuma dependência nova. (No Fedora/RHEL, se a janela não abrir, falta o pacote do sistema: `sudo dnf install python3-tkinter`.)
+
+Na janela você preenche o nome do grupo, escolhe a **pasta de saída** e a pasta de cache dos CVs num seletor, define o intervalo de anos e monta a **lista de pesquisadores numa tabela** — duplo clique edita a célula, `+ Adicionar` cria linha, e a coluna Rótulo oferece os valores comuns (professor, aluno mestrado, aluno doutorado, pós-doc) sem impedir texto livre.
+
+O botão **Editar como texto…** abre a mesma lista no formato do `.list`, para colar de uma vez a partir de uma planilha; ao confirmar, o conteúdo volta para a tabela. Comentários e espaçamento não sobrevivem a essa ida e volta.
+
+Ao clicar em **Rodar**, a GUI grava `pesquisadores.list` e `artigos.config` dentro da pasta de saída e executa o script, com o log aparecendo ao vivo na janela e um botão **Parar** para interromper. **Abrir .config…** recarrega uma configuração já usada, trazendo de volta os campos e a tabela de pesquisadores.
 
 ## Estrutura de Saída
 
