@@ -181,7 +181,7 @@ Usa o mesmo arquivo `.config` do programa principal — nenhum parâmetro novo. 
 | `<diretorio_de_saida>/artigos/NN_Nome_<idLattes>.csv` | Um arquivo por pesquisador, mesmas colunas |
 | `classificacoes-periodicos.json` | Base de classificações acumulada, na raiz do repositório |
 
-Colunas: `Pesquisador, Rótulo, ID Lattes, Ano, Título, Revista, ISSN, Volume, Número, Páginas, DOI, Autores, CAPES, ABDC, ABS, JCR, SJR, SPELL, Classificado por`
+Colunas: `Pesquisador, Rótulo, ID Lattes, Ano, Data de publicação, Título, Revista, ISSN, Volume, Número, Páginas, DOI, Autores, CAPES, ABDC, ABS, JCR, SJR, SPELL, Classificado por`
 
 ### Rótulo do pesquisador
 
@@ -204,9 +204,17 @@ A busca é feita primeiro pelo **ISSN** do artigo. Quando o Lattes não traz ISS
 
 Como o site cobre a área 27 (Administração, Ciências Contábeis e Turismo), periódicos de outras áreas costumam vir só com CAPES/JCR/SJR, deixando ABDC, ABS e SPELL vazios.
 
+### Data de publicação
+
+O Lattes guarda **só o ano** do artigo — não há mês nem dia na página, nem no `cvuri` de onde saem ISSN e volume. Para ter mais precisão, a coluna `Data de publicação` é buscada no [Crossref](https://api.crossref.org/) pelo **DOI** do artigo (API pública, sem cadastro).
+
+A data sai na precisão que o Crossref tiver: `2023-09-30`, `2023-09` ou `2023`. Fica vazia quando o artigo não tem DOI no Lattes, ou quando o DOI não está registrado no Crossref — comum em periódicos brasileiros que registram DOI em outra agência.
+
+`Ano` e `Data de publicação` podem divergir de propósito, e as duas colunas ficam no CSV justamente para você escolher. Um artigo publicado online em dezembro costuma sair num fascículo do ano seguinte, e aí o Lattes diz `2023` enquanto o Crossref diz `2022-12-23`.
+
 ### A base cresce conforme você usa
 
-Cada periódico consultado é gravado em `classificacoes-periodicos.json`, e **um periódico já presente na base nunca é consultado de novo** — nem quando a busca não encontrou nada. Quanto mais o script roda, menos requisições ele faz: na segunda execução sobre a mesma lista, o site não é acessado nenhuma vez.
+Cada periódico e cada DOI consultado é gravado em `classificacoes-periodicos.json`, e **uma chave já presente na base nunca é consultada de novo** — nem quando a busca não encontrou nada. Quanto mais o script roda, menos requisições ele faz: na segunda execução sobre a mesma lista, nem o site nem o Crossref são acessados.
 
 O arquivo fica na raiz do repositório (e não em `cache/`, que o git ignora) justamente para poder ser versionado e compartilhado entre quem usa o script. Para forçar a reconsulta de tudo — por exemplo quando o site publicar uma atualização, informada no rodapé dele — apague o arquivo.
 
