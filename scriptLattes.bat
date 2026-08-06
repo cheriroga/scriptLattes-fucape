@@ -1,0 +1,1 @@
+%USERPROFILE%\\code\\scriptLattes-fucape\\venv\\Scripts\\python.exe  %USERPROFILE%\\code\\scriptLattes-fucape\\artigos_gui.py
