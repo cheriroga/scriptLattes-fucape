@@ -762,29 +762,6 @@ class Grupo:
         return str(r) + "," + str(g) + "," + str(b)
 
 
-    def imprimeCSVListaIndividual(self, nomeCompleto, lista):
-        s = ""
-        for pub in lista:
-            s += pub.csv(nomeCompleto) + "\n"
-        return s
-
-
-    def imprimeCSVListaGrupal(self, listaCompleta):
-        s = ""
-        keys = list(listaCompleta.keys())
-        keys.sort(reverse=True)
-
-        if len(keys) > 0:
-            for ano in keys:
-                elementos = listaCompleta[ano]
-                elementos.sort(key=lambda x: x.chave.lower())
-                for index in range(0, len(elementos)):
-                    pub = elementos[index]
-                    s += pub.csv(' ') + "\n"
-        return s
-
-
-
     def salvarArquivoGenerico(self, conteudo, nomeArquivo):
         if type(conteudo) == bytes:
             conteudo = conteudo.decode() 
