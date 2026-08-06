@@ -181,7 +181,7 @@ Usa o mesmo arquivo `.config` do programa principal — nenhum parâmetro novo. 
 | `<diretorio_de_saida>/artigos/NN_Nome_<idLattes>.csv` | Um arquivo por pesquisador, mesmas colunas |
 | `classificacoes-periodicos.json` | Base de classificações acumulada, na raiz do repositório |
 
-Colunas: `Pesquisador, Rótulo, ID Lattes, Ano, Título, Revista, ISSN, Volume, Número, Páginas, DOI, Autores, CAPES, ABDC, ABS, JCR, SJR, SPELL, Classificado por`
+Colunas: `Pesquisador, Rótulo, ID Lattes, Ano, Publicado, Emitido, Online, Impresso, Título, Revista, ISSN, Volume, Número, Páginas, DOI, Autores, CAPES, ABDC, ABS, JCR, SJR, SPELL, Classificado por`
 
 ### Rótulo do pesquisador
 
@@ -204,9 +204,29 @@ A busca é feita primeiro pelo **ISSN** do artigo. Quando o Lattes não traz ISS
 
 Como o site cobre a área 27 (Administração, Ciências Contábeis e Turismo), periódicos de outras áreas costumam vir só com CAPES/JCR/SJR, deixando ABDC, ABS e SPELL vazios.
 
+### Datas de publicação
+
+O Lattes guarda **só o ano** do artigo — não há mês nem dia na página, nem no `cvuri` de onde saem ISSN e volume. Para ter mais precisão, o script consulta o [Crossref](https://api.crossref.org/) pelo **DOI** do artigo (API pública, sem cadastro) e traz as quatro datas de publicação, ao lado do ano do Lattes:
+
+| Coluna | Campo no Crossref | O que é |
+| --- | --- | --- |
+| `Ano` | — | o ano que está no Lattes |
+| `Publicado` | `published` | data unificada: a mais antiga entre online e impresso |
+| `Emitido` | `issued` | mesma ideia, campo clássico; existe em registro antigo sem `published` |
+| `Online` | `published-online` | quando saiu na internet |
+| `Impresso` | `published-print` | data do fascículo impresso |
+
+Cada data sai na precisão que o Crossref tiver: `2023-09-30`, `2021-12` ou `2024`. Coluna vazia significa que aquele campo não existe no registro — periódico só digital costuma ter `Online` e não `Impresso`, e vice-versa.
+
+As datas **divergem entre si e do Lattes de propósito**, e é por isso que as cinco colunas convivem: um artigo publicado online em dezembro sai no fascículo do ano seguinte, e a planilha mostra `Ano 2023` com `Publicado 2022-12-23`. Escolha a coluna que serve ao seu relatório.
+
+Ficam de fora as datas `created`, `deposited` e `indexed`: elas descrevem o **registro no Crossref**, não o artigo. O `indexed` chega a apontar 2026 para um artigo de 2024, porque é quando o Crossref reprocessou o registro.
+
+Tudo vazio quer dizer que o artigo não tem DOI no Lattes, ou que o DOI não está no Crossref — comum em periódico brasileiro que registra DOI em outra agência.
+
 ### A base cresce conforme você usa
 
-Cada periódico consultado é gravado em `classificacoes-periodicos.json`, e **um periódico já presente na base nunca é consultado de novo** — nem quando a busca não encontrou nada. Quanto mais o script roda, menos requisições ele faz: na segunda execução sobre a mesma lista, o site não é acessado nenhuma vez.
+Cada periódico e cada DOI consultado é gravado em `classificacoes-periodicos.json`, e **uma chave já presente na base nunca é consultada de novo** — nem quando a busca não encontrou nada. Quanto mais o script roda, menos requisições ele faz: na segunda execução sobre a mesma lista, nem o site nem o Crossref são acessados.
 
 O arquivo fica na raiz do repositório (e não em `cache/`, que o git ignora) justamente para poder ser versionado e compartilhado entre quem usa o script. Para forçar a reconsulta de tudo — por exemplo quando o site publicar uma atualização, informada no rodapé dele — apague o arquivo.
 

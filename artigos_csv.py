@@ -3,7 +3,7 @@
 #
 # Extrai apenas os artigos em periódicos dos CVs Lattes e gera CSVs, com a
 # classificação do periódico (CAPES/ABDC/ABS/JCR/SJR/SPELL) obtida do
-# periodicos-adm.com.
+# periodicos-adm.com e a data de publicação obtida do Crossref pelo DOI.
 #
 # Uso: python3 artigos_csv.py exemplo/teste-01.config
 
@@ -13,6 +13,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -22,9 +23,19 @@ from scriptLattes.grupo import Grupo
 from scriptLattes.util import criarDiretorio
 
 URL_BUSCA = 'https://periodicos-adm.com/?search_term={0}'
+URL_CROSSREF = 'https://api.crossref.org/works/{0}'
 CLASSIFICACOES = ['CAPES', 'ABDC', 'ABS', 'JCR', 'SJR', 'SPELL']
-COLUNAS = ['Pesquisador', 'Rótulo', 'ID Lattes', 'Ano', 'Título', 'Revista', 'ISSN',
-           'Volume', 'Número', 'Páginas', 'DOI', 'Autores'] + CLASSIFICACOES + ['Classificado por']
+# as quatro datas de publicação do Crossref; as outras (created, deposited, indexed)
+# são do registro no Crossref, não do artigo, e por isso ficam de fora
+CAMPOS_DE_DATA = {
+    'Publicado': 'published',
+    'Emitido': 'issued',
+    'Online': 'published-online',
+    'Impresso': 'published-print',
+}
+COLUNAS = (['Pesquisador', 'Rótulo', 'ID Lattes', 'Ano'] + list(CAMPOS_DE_DATA)
+           + ['Título', 'Revista', 'ISSN', 'Volume', 'Número', 'Páginas', 'DOI', 'Autores']
+           + CLASSIFICACOES + ['Classificado por'])
 
 
 def extrairClassificacao(html):
@@ -45,11 +56,46 @@ def extrairClassificacao(html):
     return classificacao
 
 
-class BaseDeClassificacoes:
-    """Dicionário ISSN/nome -> classificação, persistido em JSON.
+def normalizarDoi(doi):
+    """O Lattes guarda o DOI como URL; o Crossref quer só o identificador.
 
-    Quanto mais o script roda, menos consultas ao site: uma chave presente (mesmo
-    vazia) nunca é rebuscada.
+    'http://dx.doi.org/10.1590/S0034-7590' -> '10.1590/S0034-7590'"""
+    doi = doi.strip()
+    for prefixo in ('http://', 'https://'):
+        if doi.startswith(prefixo):
+            doi = doi[len(prefixo):].partition('/')[2]  # tira o host
+    return doi.strip('/')
+
+
+def formatarData(partes):
+    """['2024', 5, 12] -> '2024-05-12'. Mantém a precisão que veio: o Crossref
+    às vezes dá só o ano, ou ano e mês."""
+    if not partes or not partes[0]:
+        return ''
+    return '-'.join(f'{int(n):02d}' if i else str(int(n)) for i, n in enumerate(partes[:3]))
+
+
+def extrairDatas(corpo):
+    """As quatro datas de publicação do JSON do Crossref, só as preenchidas:
+    {'Publicado': '2023-09-30', 'Emitido': '2023-09-30', ...}"""
+    try:
+        mensagem = json.loads(corpo)['message']
+    except (ValueError, KeyError, TypeError):
+        return {}
+
+    datas = {}
+    for coluna, campo in CAMPOS_DE_DATA.items():
+        data = formatarData(((mensagem.get(campo) or {}).get('date-parts') or [[]])[0])
+        if data:
+            datas[coluna] = data
+    return datas
+
+
+class BaseDeClassificacoes:
+    """Dicionário ISSN/nome/DOI -> classificação ou data, persistido em JSON.
+
+    Quanto mais o script roda, menos consultas: uma chave presente (mesmo vazia)
+    nunca é rebuscada.
     # ponytail: miss fica cacheado para sempre; apagar o .json quando o site
     # publicar uma atualização (o rodapé dele mostra a data da última)."""
 
@@ -61,36 +107,54 @@ class BaseDeClassificacoes:
             with open(caminho, encoding='utf-8') as f:
                 self.dados = json.load(f)
 
-    def _buscar(self, chave, termo):
-        if chave in self.dados:
+    def _consultar(self, chave, url, extrair, descricao):
+        vazio = extrair('')
+        if isinstance(self.dados.get(chave), type(vazio)):
             return self.dados[chave]
 
-        time.sleep(1)  # cortesia com o site: 1 requisição por segundo
-        print(f'   buscando classificação: {termo}')
+        time.sleep(1)  # cortesia com quem serve: 1 requisição por segundo
+        print(f'   buscando {descricao}')
         self.consultas += 1
         try:
-            with urllib.request.urlopen(URL_BUSCA.format(urllib.parse.quote(termo)), timeout=30) as resposta:
-                html = resposta.read().decode('utf-8', 'replace')
+            with urllib.request.urlopen(url, timeout=30) as resposta:
+                corpo = resposta.read().decode('utf-8', 'replace')
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                print(f'   [AVISO] falha ao consultar {descricao}: {e}')
+                return vazio  # erro passageiro: não cacheia, tenta de novo depois
+            corpo = ''  # 404 é resposta definitiva: cacheia o vazio
         except Exception as e:
-            print(f'   [AVISO] falha ao consultar "{termo}": {e}')
-            return {}  # não cacheia falha de rede
+            print(f'   [AVISO] falha ao consultar {descricao}: {e}')
+            return vazio  # não cacheia falha de rede
 
-        self.dados[chave] = extrairClassificacao(html)
+        self.dados[chave] = extrair(corpo)
         return self.dados[chave]
 
     def classificar(self, issn, revista):
         """Retorna (classificação, origem). Origem: 'issn', 'nome' ou ''."""
         if issn:
-            classificacao = self._buscar('issn:' + issn, issn)
+            classificacao = self._buscar(f'issn:{issn}', issn)
             if classificacao:
                 return classificacao, 'issn'
 
         if revista:
-            classificacao = self._buscar('nome:' + revista.upper(), revista)
+            classificacao = self._buscar(f'nome:{revista.upper()}', revista)
             if classificacao:
                 return classificacao, 'nome'
 
         return {}, ''
+
+    def _buscar(self, chave, termo):
+        return self._consultar(chave, URL_BUSCA.format(urllib.parse.quote(termo)),
+                               extrairClassificacao, f'classificação: {termo}')
+
+    def datasDoArtigo(self, doi):
+        """Datas de publicação pelo DOI, via Crossref. Sem DOI ou sem registro lá, {}."""
+        doi = normalizarDoi(doi)
+        if not doi:
+            return {}
+        return self._consultar(f'doi:{doi}', URL_CROSSREF.format(urllib.parse.quote(doi)),
+                               extrairDatas, f'datas: {doi}')
 
     def salvar(self):
         with open(self.caminho, 'w', encoding='utf-8') as f:
@@ -99,6 +163,7 @@ class BaseDeClassificacoes:
 
 def linhaDoArtigo(membro, artigo, base):
     classificacao, origem = base.classificar(artigo.issn, artigo.revista)
+    datas = base.datasDoArtigo(artigo.doi)
     linha = {
         'Pesquisador': membro.nomeCompleto,
         # 4a coluna do arquivo .list: professor, mestrado, doutorado, pós-doc, ...
@@ -116,6 +181,7 @@ def linhaDoArtigo(membro, artigo, base):
         'Classificado por': origem,
     }
     linha.update({c: classificacao.get(c, '') for c in CLASSIFICACOES})
+    linha.update({c: datas.get(c, '') for c in CAMPOS_DE_DATA})
     return linha
 
 
@@ -163,8 +229,9 @@ def executar(arquivoConfiguracao):
     print(f'\n[{len(todasAsLinhas)} artigos em {len(grupo.listaDeMembros)} pesquisadores]')
     print(f'[CSV do grupo: {os.path.join(diretorioSaida, "artigos_periodicos.csv")}]')
     print(f'[CSV individuais: {diretorioIndividual}]')
-    print(f'[Base de classificações: {base.caminho} '
-          f'({len(base.dados)} periódicos, {base.consultas} consultas nesta execução)]')
+    periodicos = sum(1 for chave in base.dados if not chave.startswith('doi:'))
+    print(f'[Base local: {base.caminho} ({periodicos} periódicos, '
+          f'{len(base.dados) - periodicos} DOIs, {base.consultas} consultas nesta execução)]')
 
 
 if __name__ == '__main__':
