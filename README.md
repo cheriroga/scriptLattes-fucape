@@ -244,6 +244,8 @@ Cada grupo ganha **uma pasta só sua**, criada dentro do lugar escolhido e nomea
 
 Ao clicar em **Rodar**, a GUI grava os dois arquivos de configuração e executa o script, com o log aparecendo ao vivo na janela e um botão **Parar** para interromper. **Abrir .config…** recarrega uma configuração já usada, trazendo de volta os campos e a tabela de pesquisadores.
 
+A janela **lembra da última sessão**: ao rodar ou fechar, o preenchimento (campos e lista de pesquisadores) é guardado em `~/.scriptlattes-artigos-gui.json` e volta sozinho na próxima abertura. Para começar do zero, apague esse arquivo.
+
 ## Estrutura de Saída
 
 O scriptLattes gera vários tipos de saída para análise dos dados extraídos:

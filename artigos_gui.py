@@ -7,6 +7,7 @@
 # Uso: python3 artigos_gui.py
 
 import datetime
+import json
 import os
 import queue
 import re
@@ -29,6 +30,7 @@ CHAVES_CONFIG = {
     'anoInicial': 'global-itens_desde_o_ano',
     'anoFinal': 'global-itens_ate_o_ano',
 }
+ARQUIVO_DE_ESTADO = os.path.join(os.path.expanduser('~'), '.scriptlattes-artigos-gui.json')
 
 
 # --------------------------------------------------------------------------- #
@@ -86,6 +88,27 @@ def montarConfig(nome, arquivoLista, diretorioSaida, diretorioCache, anoInicial,
     return ''.join(f'{CHAVES_CONFIG[campo]:<42}= {valores[campo]}\n' for campo in CHAVES_CONFIG)
 
 
+def salvarEstado(caminho, estado):
+    """Guarda o preenchimento da tela para a próxima sessão. Lembrar é
+    conveniência: se não der para gravar, o programa segue igual."""
+    try:
+        with open(caminho, 'w', encoding='utf-8') as arquivo:
+            json.dump(estado, arquivo, ensure_ascii=False, indent=1)
+    except OSError as e:
+        print(f'[AVISO] não deu para lembrar desta sessão: {e}')
+
+
+def carregarEstado(caminho):
+    try:
+        with open(caminho, encoding='utf-8') as arquivo:
+            estado = json.load(arquivo)
+    except (OSError, ValueError):
+        return {}
+
+    estado['pesquisadores'] = [tuple(linha) for linha in estado.get('pesquisadores', [])]
+    return estado
+
+
 def lerConfig(texto):
     """Arquivo .config -> {'nome': ..., 'saida': ...}, ignorando as chaves que
     não interessam ao artigos_csv.py."""
@@ -103,10 +126,11 @@ def lerConfig(texto):
 # --------------------------------------------------------------------------- #
 
 class Janela:
-    def __init__(self, root):
+    def __init__(self, root, arquivoDeEstado=ARQUIVO_DE_ESTADO):
         self.root = root
         self.processo = None
         self.fila = queue.Queue()
+        self.arquivoDeEstado = arquivoDeEstado
         root.title('scriptLattes — Artigos em periódicos')
 
         moldura = ttk.Frame(root, padding=10)
@@ -138,7 +162,36 @@ class Janela:
         self._montarAcoes(moldura)
         self._montarLog(moldura)
 
+        self.restaurarSessao()
+        root.protocol('WM_DELETE_WINDOW', self.fechar)
         root.after(100, self._drenarFila)
+
+    # ----- sessão ---------------------------------------------------------- #
+
+    def restaurarSessao(self):
+        estado = carregarEstado(self.arquivoDeEstado)
+        for campo, variavel in (('nome', self.nome), ('base', self.base), ('cache', self.cache),
+                                ('anoInicial', self.anoInicial), ('anoFinal', self.anoFinal)):
+            if estado.get(campo):
+                variavel.set(estado[campo])
+        if estado.get('pesquisadores'):
+            self.preencherTabela(estado['pesquisadores'])
+
+    def lembrarSessao(self):
+        salvarEstado(self.arquivoDeEstado, {
+            'nome': self.nome.get(),
+            'base': self.base.get(),
+            'cache': self.cache.get(),
+            'anoInicial': self.anoInicial.get(),
+            'anoFinal': self.anoFinal.get(),
+            'pesquisadores': self.linhasDaTabela(),
+        })
+
+    def fechar(self):
+        self.lembrarSessao()
+        if self.processo:
+            self.processo.terminate()
+        self.root.destroy()
 
     # ----- construção ------------------------------------------------------ #
 
@@ -369,6 +422,8 @@ class Janela:
         except OSError as e:
             messagebox.showerror('Erro ao gravar', str(e))
             return
+
+        self.lembrarSessao()  # rodou, então é isto que deve voltar na próxima abertura
 
         self.log.configure(state='normal')
         self.log.delete('1.0', 'end')

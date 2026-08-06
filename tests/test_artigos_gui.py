@@ -6,7 +6,8 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from artigos_gui import lerConfig, montarConfig, parsearLista, pastaDoGrupo, serializarLista
+from artigos_gui import (carregarEstado, lerConfig, montarConfig, parsearLista, pastaDoGrupo,
+                         salvarEstado, serializarLista)
 
 LINHAS = [
     ('8826584877205264', 'Monalessa Perini Barcellos', '', 'professor'),
@@ -60,10 +61,29 @@ def test_pasta_do_grupo():
     assert pastaDoGrupo(os.path.dirname(pasta), 'Grupo Y') == pasta
 
 
+def test_estado_da_sessao(tmp_path=None):
+    import tempfile
+
+    caminho = os.path.join(tmp_path or tempfile.mkdtemp(), 'estado.json')
+    estado = {'nome': 'FUCAPE 2026', 'base': '/tmp/x', 'cache': '/tmp/c',
+              'anoInicial': '1900', 'anoFinal': '2026', 'pesquisadores': LINHAS}
+
+    salvarEstado(caminho, estado)
+    # as linhas voltam como tuplas, para comparar direto com a tabela
+    assert carregarEstado(caminho) == estado
+
+    # primeira execução (nada salvo) e arquivo corrompido não podem quebrar a abertura
+    assert carregarEstado(os.path.join(tmp_path or '/tmp', 'nao-existe-mesmo.json')) == {}
+    with open(caminho, 'w', encoding='utf-8') as arquivo:
+        arquivo.write('{isto não é json')
+    assert carregarEstado(caminho) == {}
+
+
 if __name__ == '__main__':
     test_ida_e_volta()
     test_parse_tolerante()
     test_config()
     test_config_ignora_chaves_de_fora()
     test_pasta_do_grupo()
+    test_estado_da_sessao()
     print('ok')
