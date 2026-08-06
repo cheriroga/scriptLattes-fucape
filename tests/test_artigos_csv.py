@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from artigos_csv import extrairClassificacao, extrairData, normalizarDoi
+from artigos_csv import CAMPOS_DE_DATA, COLUNAS, extrairClassificacao, extrairDatas, normalizarDoi
 
 UM_RESULTADO = '''
 <div class="results-grid">
@@ -50,29 +50,45 @@ def test_normalizar_doi():
     assert normalizarDoi('') == ''
 
 
-def crossref(campo, partes):
-    return json.dumps({'message': {campo: {'date-parts': [partes]}}})
+def crossref(**campos):
+    """published_online=[2022, 12] -> resposta com "published-online"."""
+    return json.dumps({'message': {campo.replace('_', '-'): {'date-parts': [partes]}
+                                   for campo, partes in campos.items()}})
 
 
-def test_extrair_data():
+def test_extrair_datas():
     # a precisão é a que o Crossref der, sem inventar dia nem mês
-    assert extrairData(crossref('published', [2024, 5, 12])) == '2024-05-12'
-    assert extrairData(crossref('published', [2024, 5])) == '2024-05'
-    assert extrairData(crossref('published', [2024])) == '2024'
+    assert extrairDatas(crossref(published=[2024, 5, 12]))['Publicado'] == '2024-05-12'
+    assert extrairDatas(crossref(published=[2024, 5]))['Publicado'] == '2024-05'
+    assert extrairDatas(crossref(published=[2024]))['Publicado'] == '2024'
 
-    # 'published' é o campo novo; 'issued' cobre registro antigo que só tem ele
-    assert extrairData(crossref('issued', [1998, 11])) == '1998-11'
+    # os quatro campos são independentes: online em dezembro, fascículo no ano seguinte
+    datas = extrairDatas(crossref(published=[2022, 12, 23], issued=[2022, 12, 23],
+                                  published_online=[2022, 12, 23], published_print=[2023]))
+    assert datas == {'Publicado': '2022-12-23', 'Emitido': '2022-12-23',
+                     'Online': '2022-12-23', 'Impresso': '2023'}
+
+    # campo ausente não vira coluna vazia inventada
+    assert extrairDatas(crossref(issued=[1998, 11])) == {'Emitido': '1998-11'}
 
     # DOI sem data, resposta vazia (rede caiu) e lixo não podem quebrar a linha
-    assert extrairData(crossref('published', [])) == ''
-    assert extrairData(json.dumps({'message': {}})) == ''
-    assert extrairData('') == ''
-    assert extrairData('<html>404</html>') == ''
+    assert extrairDatas(crossref(published=[])) == {}
+    assert extrairDatas(json.dumps({'message': {}})) == {}
+    assert extrairDatas('') == {}
+    assert extrairDatas('<html>404</html>') == {}
+
+
+def test_colunas():
+    # as quatro datas vêm logo depois do ano do Lattes, para comparar de bater o olho
+    assert COLUNAS[3:8] == ['Ano', 'Publicado', 'Emitido', 'Online', 'Impresso']
+    assert len(set(COLUNAS)) == len(COLUNAS), 'coluna repetida quebra o DictWriter'
+    assert set(CAMPOS_DE_DATA) <= set(COLUNAS)
 
 
 if __name__ == '__main__':
     test_um_resultado()
     test_resultado_ambiguo_ou_ausente()
     test_normalizar_doi()
-    test_extrair_data()
+    test_extrair_datas()
+    test_colunas()
     print('ok')

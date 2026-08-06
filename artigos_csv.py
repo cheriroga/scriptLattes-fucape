@@ -25,9 +25,17 @@ from scriptLattes.util import criarDiretorio
 URL_BUSCA = 'https://periodicos-adm.com/?search_term={0}'
 URL_CROSSREF = 'https://api.crossref.org/works/{0}'
 CLASSIFICACOES = ['CAPES', 'ABDC', 'ABS', 'JCR', 'SJR', 'SPELL']
-COLUNAS = ['Pesquisador', 'Rótulo', 'ID Lattes', 'Ano', 'Data de publicação', 'Título',
-           'Revista', 'ISSN', 'Volume', 'Número', 'Páginas', 'DOI',
-           'Autores'] + CLASSIFICACOES + ['Classificado por']
+# as quatro datas de publicação do Crossref; as outras (created, deposited, indexed)
+# são do registro no Crossref, não do artigo, e por isso ficam de fora
+CAMPOS_DE_DATA = {
+    'Publicado': 'published',
+    'Emitido': 'issued',
+    'Online': 'published-online',
+    'Impresso': 'published-print',
+}
+COLUNAS = (['Pesquisador', 'Rótulo', 'ID Lattes', 'Ano'] + list(CAMPOS_DE_DATA)
+           + ['Título', 'Revista', 'ISSN', 'Volume', 'Número', 'Páginas', 'DOI', 'Autores']
+           + CLASSIFICACOES + ['Classificado por'])
 
 
 def extrairClassificacao(html):
@@ -59,20 +67,28 @@ def normalizarDoi(doi):
     return doi.strip('/')
 
 
-def extrairData(corpo):
-    """Data de publicação do JSON do Crossref, na precisão que ele der:
-    '2024-05-12', '2024-05' ou '2024'. Sem data reconhecível, string vazia."""
+def formatarData(partes):
+    """['2024', 5, 12] -> '2024-05-12'. Mantém a precisão que veio: o Crossref
+    às vezes dá só o ano, ou ano e mês."""
+    if not partes or not partes[0]:
+        return ''
+    return '-'.join(f'{int(n):02d}' if i else str(int(n)) for i, n in enumerate(partes[:3]))
+
+
+def extrairDatas(corpo):
+    """As quatro datas de publicação do JSON do Crossref, só as preenchidas:
+    {'Publicado': '2023-09-30', 'Emitido': '2023-09-30', ...}"""
     try:
         mensagem = json.loads(corpo)['message']
     except (ValueError, KeyError, TypeError):
-        return ''
+        return {}
 
-    for campo in ('published', 'issued', 'published-online', 'published-print'):
-        partes = (mensagem.get(campo) or {}).get('date-parts') or [[]]
-        if partes[0] and partes[0][0]:
-            return '-'.join(f'{int(n):02d}' if i else str(int(n))
-                            for i, n in enumerate(partes[0][:3]))
-    return ''
+    datas = {}
+    for coluna, campo in CAMPOS_DE_DATA.items():
+        data = formatarData(((mensagem.get(campo) or {}).get('date-parts') or [[]])[0])
+        if data:
+            datas[coluna] = data
+    return datas
 
 
 class BaseDeClassificacoes:
@@ -92,10 +108,10 @@ class BaseDeClassificacoes:
                 self.dados = json.load(f)
 
     def _consultar(self, chave, url, extrair, descricao):
-        if chave in self.dados:
+        vazio = extrair('')
+        if isinstance(self.dados.get(chave), type(vazio)):
             return self.dados[chave]
 
-        vazio = extrair('')
         time.sleep(1)  # cortesia com quem serve: 1 requisição por segundo
         print(f'   buscando {descricao}')
         self.consultas += 1
@@ -132,13 +148,13 @@ class BaseDeClassificacoes:
         return self._consultar(chave, URL_BUSCA.format(urllib.parse.quote(termo)),
                                extrairClassificacao, f'classificação: {termo}')
 
-    def dataDePublicacao(self, doi):
-        """Data pelo DOI, via Crossref. Sem DOI ou sem registro lá, ''."""
+    def datasDoArtigo(self, doi):
+        """Datas de publicação pelo DOI, via Crossref. Sem DOI ou sem registro lá, {}."""
         doi = normalizarDoi(doi)
         if not doi:
-            return ''
+            return {}
         return self._consultar(f'doi:{doi}', URL_CROSSREF.format(urllib.parse.quote(doi)),
-                               extrairData, f'data: {doi}')
+                               extrairDatas, f'datas: {doi}')
 
     def salvar(self):
         with open(self.caminho, 'w', encoding='utf-8') as f:
@@ -147,13 +163,13 @@ class BaseDeClassificacoes:
 
 def linhaDoArtigo(membro, artigo, base):
     classificacao, origem = base.classificar(artigo.issn, artigo.revista)
+    datas = base.datasDoArtigo(artigo.doi)
     linha = {
         'Pesquisador': membro.nomeCompleto,
         # 4a coluna do arquivo .list: professor, mestrado, doutorado, pós-doc, ...
         'Rótulo': membro.rotulo,
         'ID Lattes': membro.idLattes,
         'Ano': artigo.ano,
-        'Data de publicação': base.dataDePublicacao(artigo.doi),
         'Título': artigo.titulo,
         'Revista': artigo.revista,
         'ISSN': artigo.issn,
@@ -165,6 +181,7 @@ def linhaDoArtigo(membro, artigo, base):
         'Classificado por': origem,
     }
     linha.update({c: classificacao.get(c, '') for c in CLASSIFICACOES})
+    linha.update({c: datas.get(c, '') for c in CAMPOS_DE_DATA})
     return linha
 
 
